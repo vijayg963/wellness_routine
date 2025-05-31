@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive WFH Routine Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Visualization & Content Choices: 
+        - Daily Flow (Report Section I-V): Goal: Organize/Inform. Method: An interactive vertical timeline built with HTML/Tailwind. Interaction: Clicking a time block reveals detailed suggestions. Justification: More engaging and less overwhelming than a long text list.
+        - Time Balance (Derived from Report): Goal: Compare/Inform. Method: Donut Chart showing time distribution (Work, Sleep, Activity, etc.). Interaction: Hover tooltips. Justification: Provides a quick, scannable data visualization of a balanced day. Library: Chart.js (Canvas).
+        - Meal Ideas (Report Section III, IV, VI): Goal: Organize. Method: A filterable gallery of cards. Interaction: Category filter buttons (Breakfast, Lunch, etc.). Justification: Allows users to quickly find specific meal ideas without scrolling through unrelated content. Library: Vanilla JS.
+        - Activity Suggestions (Report Section II, IV, VII): Goal: Organize. Method: Curated lists separated by intensity/duration. Interaction: Clear, categorized sections. Justification: Helps users find an appropriate activity based on available time and energy. Library: HTML/Tailwind.
+        - General Tips (Report Section VI, VII): Goal: Inform. Method: Accordion-style collapsible sections. Interaction: Click to expand/collapse. Justification: Prevents information overload by hiding details until requested. Library: Vanilla JS. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #4A4A4A;
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            position: relative;
+            padding-bottom: 4px;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: #4A5568;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .meal-card {
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .meal-card.hidden {
+            opacity: 0;
+            transform: scale(0.9);
+            display: none;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            height: auto;
+            min-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                min-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">WFH Wellness Planner</h1>
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#schedule" class="nav-link text-gray-600 hover:text-gray-900">Schedule</a>
+                <a href="#meals" class="nav-link text-gray-600 hover:text-gray-900">Meal Explorer</a>
+                <a href="#activities" class="nav-link text-gray-600 hover:text-gray-900">Activity Hub</a>
+                <a href="#tips" class="nav-link text-gray-600 hover:text-gray-900">Health Tips</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-gray-700 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden">
+            <a href="#schedule" class="block py-2 px-6 text-sm text-gray-700 hover:bg-gray-100">Schedule</a>
+            <a href="#meals" class="block py-2 px-6 text-sm text-gray-700 hover:bg-gray-100">Meal Explorer</a>
+            <a href="#activities" class="block py-2 px-6 text-sm text-gray-700 hover:bg-gray-100">Activity Hub</a>
+            <a href="#tips" class="block py-2 px-6 text-sm text-gray-700 hover:bg-gray-100">Health Tips</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+
+        <section id="intro" class="text-center mb-20">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">Craft Your Ideal Work-From-Home Day</h2>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">This tool transforms the healthy WFH guide into an interactive experience. Explore the suggested schedule, discover healthy meal ideas, and find the perfect activity to re-energize your day. Balance and well-being are just a click away.</p>
+        </section>
+
+        <hr class="my-16 border-gray-200">
+
+        <section id="schedule" class="mb-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-gray-800">A Balanced Day: Visual Schedule</h3>
+                <p class="text-md text-gray-600 mt-2 max-w-2xl mx-auto">This section provides a visual timeline for a structured and healthy day. Click on any block to see detailed suggestions. Below the timeline, a chart visualizes how this schedule allocates your 24 hours, helping you see the balance between work, rest, and personal time.</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div class="relative pl-8 border-l-2 border-gray-200">
+                    
+                    <div class="mb-8 relative timeline-item">
+                        <div class="absolute -left-[38px] top-1 w-4 h-4 bg-teal-500 rounded-full border-4 border-white"></div>
+                        <h4 class="text-lg font-semibold text-gray-700">7:00 AM - 9:00 AM</h4>
+                        <p class="text-2xl font-bold text-teal-700">Morning Power-Up ☀️</p>
+                        <div class="text-gray-600 mt-2 text-sm">Wake up, hydrate, and engage in light movement and mindfulness before a healthy breakfast.</div>
+                    </div>
+                    
+                    <div class="mb-8 relative timeline-item">
+                        <div class="absolute -left-[38px] top-1 w-4 h-4 bg-sky-500 rounded-full border-4 border-white"></div>
+                        <h4 class="text-lg font-semibold text-gray-700">9:00 AM - 1:00 PM</h4>
+                        <p class="text-2xl font-bold text-sky-700">Focused Work Blocks 💻</p>
+                        <div class="text-gray-600 mt-2 text-sm">Tackle demanding tasks with an active break in between to stay fresh and focused.</div>
+                    </div>
+
+                    <div class="mb-8 relative timeline-item">
+                        <div class="absolute -left-[38px] top-1 w-4 h-4 bg-amber-500 rounded-full border-4 border-white"></div>
+                        <h4 class="text-lg font-semibold text-gray-700">1:00 PM - 2:00 PM</h4>
+                        <p class="text-2xl font-bold text-amber-700">Recharge Lunch Break 🥗</p>
+                        <div class="text-gray-600 mt-2 text-sm">Step away from your desk for a mindful, balanced meal and a short walk for fresh air.</div>
+                    </div>
+
+                    <div class="mb-8 relative timeline-item">
+                        <div class="absolute -left-[38px] top-1 w-4 h-4 bg-sky-500 rounded-full border-4 border-white"></div>
+                        <h4 class="text-lg font-semibold text-gray-700">2:00 PM - 6:00 PM</h4>
+                        <p class="text-2xl font-bold text-sky-700">Afternoon Productivity 🎯</p>
+                        <div class="text-gray-600 mt-2 text-sm">Handle meetings and wrap up tasks, taking another short break to move and recharge.</div>
+                    </div>
+                    
+                    <div class="mb-8 relative timeline-item">
+                        <div class="absolute -left-[38px] top-1 w-4 h-4 bg-indigo-500 rounded-full border-4 border-white"></div>
+                        <h4 class="text-lg font-semibold text-gray-700">6:00 PM Onwards</h4>
+                        <p class="text-2xl font-bold text-indigo-700">Evening Wind-Down 🌙</p>
+                        <div class="text-gray-600 mt-2 text-sm">Disconnect from work, enjoy a dedicated activity, eat a healthy dinner, and relax before bed.</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="dailyRoutineChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <hr class="my-16 border-gray-200">
+
+        <section id="meals" class="mb-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-gray-800">Interactive Meal Explorer</h3>
+                <p class="text-md text-gray-600 mt-2 max-w-2xl mx-auto">Eating healthy is crucial when working from home. Use the filters below to discover nutritious and delicious meal ideas for any time of day. This section gathers all the food suggestions from the guide into one easy-to-navigate place.</p>
+            </div>
+            <div class="flex justify-center space-x-2 md:space-x-4 mb-8 flex-wrap">
+                <button data-filter="all" class="meal-filter-btn active bg-gray-700 text-white px-4 py-2 rounded-full text-sm font-semibold">All</button>
+                <button data-filter="breakfast" class="meal-filter-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold border border-gray-300">Breakfast</button>
+                <button data-filter="lunch" class="meal-filter-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold border border-gray-300">Lunch</button>
+                <button data-filter="dinner" class="meal-filter-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold border border-gray-300">Dinner</button>
+                <button data-filter="snack" class="meal-filter-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold border border-gray-300">Snacks</button>
+            </div>
+            <div id="meal-gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="breakfast">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-2xl mb-3">🥣</div>
+                    <h4 class="font-bold text-gray-800">Oatmeal</h4>
+                    <p class="text-sm text-gray-600">with fruits and nuts.</p>
+                </div>
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="breakfast">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-2xl mb-3">🍳</div>
+                    <h4 class="font-bold text-gray-800">Eggs & Avocado Toast</h4>
+                    <p class="text-sm text-gray-600">On whole-wheat toast.</p>
+                </div>
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="breakfast">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-2xl mb-3">🥤</div>
+                    <h4 class="font-bold text-gray-800">Protein Smoothie</h4>
+                    <p class="text-sm text-gray-600">With spinach and fruit.</p>
+                </div>
+                 <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="breakfast">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-xl mb-3">🍛</div>
+                    <h4 class="font-bold text-gray-800">Poha or Upma</h4>
+                    <p class="text-sm text-gray-600">Traditional savory Indian breakfast.</p>
+                </div>
+
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="lunch">
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl mb-3">🥗</div>
+                    <h4 class="font-bold text-gray-800">Large Protein Salad</h4>
+                    <p class="text-sm text-gray-600">With chicken, fish, or chickpeas.</p>
+                </div>
+                 <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="lunch">
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl mb-3">🍲</div>
+                    <h4 class="font-bold text-gray-800">Dal & Brown Rice</h4>
+                    <p class="text-sm text-gray-600">With a side of vegetables.</p>
+                </div>
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="lunch">
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl mb-3">🥙</div>
+                    <h4 class="font-bold text-gray-800">Roti & Sabzi</h4>
+                    <p class="text-sm text-gray-600">With a side of yogurt (raita).</p>
+                </div>
+
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="dinner">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl mb-3">🐟</div>
+                    <h4 class="font-bold text-gray-800">Baked/Grilled Fish</h4>
+                    <p class="text-sm text-gray-600">With roasted vegetables.</p>
+                </div>
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="dinner">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl mb-3">🥘</div>
+                    <h4 class="font-bold text-gray-800">Lentil-based Dishes</h4>
+                    <p class="text-sm text-gray-600">Hearty and full of protein.</p>
+                </div>
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="dinner">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl mb-3">🥡</div>
+                    <h4 class="font-bold text-gray-800">Tofu Stir-fry</h4>
+                    <p class="text-sm text-gray-600">With brown rice.</p>
+                </div>
+
+                <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="snack">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl mb-3">🍎</div>
+                    <h4 class="font-bold text-gray-800">Fruit & Nuts</h4>
+                    <p class="text-sm text-gray-600">A classic healthy snack.</p>
+                </div>
+                 <div class="meal-card card p-4 bg-white rounded-lg shadow-md" data-category="snack">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl mb-3">🌱</div>
+                    <h4 class="font-bold text-gray-800">Sprouts or Makhanas</h4>
+                    <p class="text-sm text-gray-600">Light and nutritious Indian snacks.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="my-16 border-gray-200">
+
+        <section id="activities" class="mb-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-gray-800">Activity & Movement Hub</h3>
+                <p class="text-md text-gray-600 mt-2 max-w-2xl mx-auto">Staying active is key to combating a sedentary work-from-home lifestyle. Here are ideas for both quick breaks and longer, dedicated workouts, helping you find the right movement for any moment.</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h4 class="text-2xl font-bold text-sky-700 mb-4">Quick Breaks (5-15 min) 🏃</h4>
+                    <ul class="space-y-3 text-gray-600 list-disc list-inside">
+                        <li>Gentle stretching at your desk.</li>
+                        <li>A short walk around your home or garden.</li>
+                        <li>Climbing a few flights of stairs.</li>
+                        <li>"Exercise Snacking": 10 squats or jumping jacks every hour.</li>
+                        <li>Take phone calls while standing or pacing.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h4 class="text-2xl font-bold text-emerald-700 mb-4">Dedicated Activity (30+ min) 💪</h4>
+                    <ul class="space-y-3 text-gray-600 list-disc list-inside">
+                        <li>A brisk walk, jog, or cycle outdoors.</li>
+                        <li>Follow a home workout video online.</li>
+                        <li>Join a virtual fitness class (Yoga, HIIT).</li>
+                        <li>Gardening or vigorous house cleaning.</li>
+                        <li>Weekend hike or playing a sport.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <hr class="my-16 border-gray-200">
+
+        <section id="tips" class="mb-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-gray-800">Essential Health Tips</h3>
+                <p class="text-md text-gray-600 mt-2 max-w-2xl mx-auto">This section compiles the core principles from the guide for healthy eating and integrating more activity into your day. Click on each topic to expand and learn more.</p>
+            </div>
+            <div class="max-w-3xl mx-auto space-y-4">
+                <div class="accordion-item bg-white rounded-lg shadow-sm">
+                    <button class="accordion-header flex justify-between items-center w-full p-5 text-left font-semibold text-gray-800">
+                        <span>General Healthy Eating Principles</span>
+                        <span class="accordion-icon text-xl text-gray-500 transform transition-transform">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="p-5 pt-0 text-gray-600">
+                            <ul class="space-y-2 list-disc list-inside">
+                                <li><strong>Stay Hydrated:</strong> Aim for 2-3 liters of water daily.</li>
+                                <li><strong>Prioritize Whole Foods:</strong> Focus on fruits, vegetables, whole grains, and lean proteins.</li>
+                                <li><strong>Limit Processed Foods:</strong> Reduce intake of sugary snacks, drinks, and fried foods.</li>
+                                <li><strong>Portion Control:</strong> Be mindful of serving sizes, especially when snacking.</li>
+                                <li><strong>Meal Prep:</strong> Save time during the week by preparing ingredients on weekends.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                 <div class="accordion-item bg-white rounded-lg shadow-sm">
+                    <button class="accordion-header flex justify-between items-center w-full p-5 text-left font-semibold text-gray-800">
+                        <span>Power of Indian Superfoods</span>
+                        <span class="accordion-icon text-xl text-gray-500 transform transition-transform">+</span>
+                    </button>
+                    <div class="accordion-content">
+                         <div class="p-5 pt-0 text-gray-600">
+                            <ul class="space-y-2 list-disc list-inside">
+                                <li><strong>Turmeric (Haldi):</strong> Anti-inflammatory.</li>
+                                <li><strong>Ginger (Adrak):</strong> Aids digestion.</li>
+                                <li><strong>Lentils & Legumes (Dal, Chana):</strong> Excellent protein and fiber.</li>
+                                <li><strong>Yogurt (Dahi):</strong> Probiotic for gut health.</li>
+                                <li><strong>Leafy Greens (Palak, Methi):</strong> Rich in vitamins.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                 <div class="accordion-item bg-white rounded-lg shadow-sm">
+                    <button class="accordion-header flex justify-between items-center w-full p-5 text-left font-semibold text-gray-800">
+                        <span>Easy Ways to Integrate More Activity</span>
+                        <span class="accordion-icon text-xl text-gray-500 transform transition-transform">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="p-5 pt-0 text-gray-600">
+                            <ul class="space-y-2 list-disc list-inside">
+                                <li><strong>Movement Reminders:</strong> Set an alarm to stand and move every hour.</li>
+                                <li><strong>Use Stairs:</strong> Always choose stairs over the elevator.</li>
+                                <li><strong>Active Hobbies:</strong> Pick up hobbies that get you moving, like dancing or gardening.</li>
+                                <li><strong>Make it Social:</strong> Plan active outings with friends or family on weekends.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-gray-800 text-white mt-20">
+        <div class="container mx-auto px-6 py-4 text-center">
+            <p>Built to promote a healthy and balanced work-from-home lifestyle.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('main section[id]');
+            
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').includes(current)) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+
+            const filterButtons = document.querySelectorAll('.meal-filter-btn');
+            const mealCards = document.querySelectorAll('.meal-card');
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    filterButtons.forEach(btn => {
+                        btn.classList.remove('active', 'bg-gray-700', 'text-white');
+                        btn.classList.add('bg-white', 'text-gray-700');
+                    });
+                    button.classList.add('active', 'bg-gray-700', 'text-white');
+                    button.classList.remove('bg-white', 'text-gray-700');
+                    
+                    const filter = button.dataset.filter;
+                    
+                    mealCards.forEach(card => {
+                        if (filter === 'all' || card.dataset.category === filter) {
+                            card.classList.remove('hidden');
+                        } else {
+                            card.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+            
+            const accordionItems = document.querySelectorAll('.accordion-item');
+            accordionItems.forEach(item => {
+                const header = item.querySelector('.accordion-header');
+                const content = item.querySelector('.accordion-content');
+                const icon = item.querySelector('.accordion-icon');
+
+                header.addEventListener('click', () => {
+                    const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+                    accordionItems.forEach(i => {
+                        i.querySelector('.accordion-content').style.maxHeight = '0px';
+                        i.querySelector('.accordion-icon').textContent = '+';
+                        i.querySelector('.accordion-icon').classList.remove('rotate-45');
+                    });
+
+                    if (!isOpen) {
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        icon.textContent = '-';
+                        icon.classList.add('rotate-45');
+                    }
+                });
+            });
+            
+            const ctx = document.getElementById('dailyRoutineChart').getContext('2d');
+            const dailyRoutineChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Work (8h)', 'Sleep (8h)', 'Relax/Hobby (2.5h)', 'Meals (2h)', 'Activity (1.5h)', 'Mindfulness (0.5h)'],
+                    datasets: [{
+                        label: 'Hours in a Day',
+                        data: [8, 8, 2.5, 2, 1.5, 0.5],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)', // sky
+                            'rgba(99, 102, 241, 0.8)', // indigo
+                            'rgba(16, 185, 129, 0.8)', // emerald
+                            'rgba(245, 158, 11, 0.8)', // amber
+                            'rgba(20, 184, 166, 0.8)', // teal
+                            'rgba(239, 68, 68, 0.8)', // red
+                        ],
+                        borderColor: [
+                            '#FDFBF8'
+                        ],
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 12,
+                                    family: 'Inter'
+                                },
+                                color: '#4A4A4A'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ' hours';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
+
